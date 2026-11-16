@@ -1,0 +1,14 @@
+{
+  "name": "mini-project",
+  "version": "1.0.0",
+  "description": "Interactive Coding Learning Platform for Beginners",
+  "scripts": {
+    "dev": "concurrently -n \"backend,client\" -c \"blue.bold,green.bold\" \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
+    "backend": "npm run dev --prefix backend",
+    "client": "npm run dev --prefix client",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
