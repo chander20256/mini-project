@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, GitFork, Info, Search, Sparkles, X, AlertCircle
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, GitFork, Info, Search, Sparkles, ChevronLeft, ChevronRight, X, AlertCircle
 } from 'lucide-react';
 import TreeCodeViewer from '../TreeCodeViewer';
 import TreeComplexityDeepDive from '../TreeComplexityDeepDive';
@@ -65,7 +65,7 @@ const bstSearchQuestions = [
   }
 ];
 
-export default function BstSearch({ onBack }) {
+export default function BstSearch({ onBack, onNavigateAlgo }) {
   const [treeValues, setTreeValues] = useState([50, 25, 75, 12, 37, 62, 87]);
   const [root, setRoot] = useState(null);
   const [nodesList, setNodesList] = useState([]);
@@ -78,7 +78,7 @@ export default function BstSearch({ onBack }) {
   const [foundNodeVal, setFoundNodeVal] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [activeLine, setActiveLine] = useState(-1);
-  const [stepLog, setStepLog] = useState('Tree initialized. Type a target value and click "Search Target".');
+  const [stepLog, setStepLog] = useState('Tree initialized. Type a target value and click "Search Target" or "Next".');
   const [comparisonsCount, setComparisonsCount] = useState(0);
   const [speed, setSpeed] = useState(500);
   const [stepTick, setStepTick] = useState(0);
@@ -154,6 +154,7 @@ export default function BstSearch({ onBack }) {
   const precomputeSearchSteps = (target) => {
     const steps = [];
     let curr = root;
+    let comparisons = 0;
 
     if (!curr) {
       steps.push({
@@ -161,6 +162,7 @@ export default function BstSearch({ onBack }) {
         activeVal: null,
         foundVal: null,
         notFound: true,
+        comparisonsCount: 0,
         activeLine: 1,
         msg: `Tree is empty! Target ${target} not found.`
       });
@@ -169,12 +171,14 @@ export default function BstSearch({ onBack }) {
     }
 
     while (curr) {
+      comparisons += 1;
       if (target === curr.val) {
         steps.push({
           type: 'found',
           activeVal: curr.val,
           foundVal: curr.val,
           notFound: false,
+          comparisonsCount: comparisons,
           activeLine: 1,
           msg: `TARGET FOUND! Node ${curr.val} matches target ${target}!`
         });
@@ -185,6 +189,7 @@ export default function BstSearch({ onBack }) {
           activeVal: curr.val,
           foundVal: null,
           notFound: false,
+          comparisonsCount: comparisons,
           activeLine: 2,
           msg: `Target ${target} < ${curr.val} -> Routing LEFT into smaller keys subtree.`
         });
@@ -195,6 +200,7 @@ export default function BstSearch({ onBack }) {
             activeVal: null,
             foundVal: null,
             notFound: true,
+            comparisonsCount: comparisons,
             activeLine: 1,
             msg: `Reached null left leaf! Target ${target} does not exist in this BST.`
           });
@@ -205,6 +211,7 @@ export default function BstSearch({ onBack }) {
           activeVal: curr.val,
           foundVal: null,
           notFound: false,
+          comparisonsCount: comparisons,
           activeLine: 5,
           msg: `Target ${target} > ${curr.val} -> Routing RIGHT into larger keys subtree.`
         });
@@ -215,6 +222,7 @@ export default function BstSearch({ onBack }) {
             activeVal: null,
             foundVal: null,
             notFound: true,
+            comparisonsCount: comparisons,
             activeLine: 1,
             msg: `Reached null right leaf! Target ${target} does not exist in this BST.`
           });
@@ -250,27 +258,52 @@ export default function BstSearch({ onBack }) {
     }
   };
 
-  const executeNextStep = () => {
-    if (currentStepIndex.current >= stepsRef.current.length) {
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setActiveNodeVal(null);
+      setFoundNodeVal(null);
+      setNotFound(false);
+      setActiveLine(-1);
+      setComparisonsCount(0);
+      setStepLog(`Ready. Click "Start Search" or "Next" to begin.`);
+      setStepTick(t => t + 1);
+      return;
+    }
+    if (index >= stepsRef.current.length) {
       setIsPlaying(false);
-      return false;
+      currentStepIndex.current = stepsRef.current.length;
+      setStepTick(t => t + 1);
+      return;
     }
 
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
     setActiveNodeVal(step.activeVal);
     setFoundNodeVal(step.foundVal);
     setNotFound(step.notFound);
     setActiveLine(step.activeLine);
     setStepLog(step.msg);
-
-    if (step.type.startsWith('compare') || step.type === 'found') {
-      setComparisonsCount(c => c + 1);
-    }
-
+    setComparisonsCount(step.comparisonsCount || 0);
     setStepTick(t => t + 1);
+  };
+
+  const executeNextStep = () => {
+    if (currentStepIndex.current >= stepsRef.current.length) {
+      setIsPlaying(false);
+      return false;
+    }
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -351,6 +384,24 @@ export default function BstSearch({ onBack }) {
         </div>
 
         <div className="flex items-center gap-3">
+          {onNavigateAlgo && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigateAlgo('bst_insert')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev: BST Insert</span>
+              </button>
+              <button
+                onClick={() => onNavigateAlgo('inorder')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <span>Next: Inorder</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           <div className="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-200">
             <GitFork className="w-3.5 h-3.5 text-teal-600" />
             <span>{treeValues.length} Nodes</span>
@@ -532,11 +583,20 @@ export default function BstSearch({ onBack }) {
                     <span>Random</span>
                   </button>
                   <button
-                    onClick={executeNextStep}
-                    disabled={isPlaying}
-                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    onClick={executePrevStep}
+                    disabled={isPlaying || currentStepIndex.current <= 0}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Previous Step"
                   >
-                    <SkipForward className="w-4 h-4" /><span>Step</span>
+                    <SkipBack className="w-4 h-4" /><span>Prev</span>
+                  </button>
+                  <button
+                    onClick={executeNextStep}
+                    disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Next Step"
+                  >
+                    <SkipForward className="w-4 h-4" /><span>Next</span>
                   </button>
                   <button
                     onClick={() => handleResetPreset([50, 25, 75, 12, 37, 62, 87])}
