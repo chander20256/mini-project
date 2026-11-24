@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import TreeCodeViewer from '../TreeCodeViewer';
 import TreeComplexityDeepDive from '../TreeComplexityDeepDive';
+import TreeCodeExplanation from '../TreeCodeExplanation';
 
 // Node helper class for BST
 class BSTNode {
@@ -745,6 +746,9 @@ export default function BstInsertion({ onBack, onNavigateAlgo }) {
 
         {/* Deep Explanation Section */}
         <TreeComplexityDeepDive algoKey="bst_insert" />
+
+        {/* Complete Code Explanation Section */}
+        <TreeCodeExplanation algoKey="bst_insert" />
       </main>
 
       {/* 5-Question Interview Test Modal */}
