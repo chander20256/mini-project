@@ -78,16 +78,16 @@ export default function GraphDashboard({
 
   // Route to the dedicated visualizer component
   if (selectedAlgo === 'bfs') {
-    return <BfsVisualizer onBack={() => setSelectedAlgo(null)} />;
+    return <BfsVisualizer onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'dfs') {
-    return <DfsVisualizer onBack={() => setSelectedAlgo(null)} />;
+    return <DfsVisualizer onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'cycle_detection') {
-    return <CycleDetection onBack={() => setSelectedAlgo(null)} />;
+    return <CycleDetection onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'dijkstra') {
-    return <DijkstraVisualizer onBack={() => setSelectedAlgo(null)} />;
+    return <DijkstraVisualizer onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
 
   // Common Hub: All Graph Cards View
