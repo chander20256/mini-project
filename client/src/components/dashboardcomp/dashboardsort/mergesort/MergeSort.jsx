@@ -63,6 +63,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
   const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
+  const [activeRange, setActiveRange] = useState([]);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
@@ -94,6 +95,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
+    setActiveRange([]);
     setSortedIndices([]);
     setStepLog('New array generated. Click "Start Sort" to begin.');
     setComparisonsCount(0);
@@ -113,6 +115,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
+    setActiveRange([]);
     setSortedIndices([]);
     setStepLog(`Custom array of ${customArr.length} elements loaded. Click "Start Sort" to run.`);
     setComparisonsCount(0);
@@ -131,65 +134,158 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
     const a = [...arr];
     const n = a.length;
     let comparisons = 0;
-    let swaps = 0;
+    let writes = 0;
     const settled = [];
 
-    for (let i = 0; i < n - 1; i++) {
-      for (let j = 0; j < n - i - 1; j++) {
-        comparisons += 1;
-        steps.push({
-          type: 'compare',
-          comparing: [j, j + 1],
-          swapping: [],
-          sortedIndices: [...settled],
-          comparisonsCount: comparisons,
-          swapsCount: swaps,
-          arr: [...a],
-          activeLine: 5,
-          msg: `Merging sub-halves: comparing left [${j}] (${a[j]}) and right [${j + 1}] (${a[j + 1]})`
-        });
-        if (a[j] > a[j + 1]) {
-          const temp = a[j];
-          a[j] = a[j + 1];
-          a[j + 1] = temp;
-          swaps += 1;
-          steps.push({
-            type: 'swap',
-            comparing: [],
-            swapping: [j, j + 1],
-            sortedIndices: [...settled],
-            comparisonsCount: comparisons,
-            swapsCount: swaps,
-            arr: [...a],
-            activeLine: 5,
-            msg: `Merged sorted item ${a[j + 1]} into auxiliary place`
-          });
-        }
-      }
-      settled.push(n - 1 - i);
+    function mergeSortRec(l, r) {
+      if (l >= r) return;
+      const m = Math.floor((l + r) / 2);
+
       steps.push({
-        type: 'settled',
+        type: 'divide',
+        activeRange: [l, r],
         comparing: [],
         swapping: [],
         sortedIndices: [...settled],
         comparisonsCount: comparisons,
-        swapsCount: swaps,
+        swapsCount: writes,
         arr: [...a],
-        activeLine: 0,
-        msg: `Sub-array partition merged and placed up to index ${n - 1 - i}`
+        activeLine: 2,
+        msg: `Divide: Splitting subarray [${l}..${r}] at midpoint ${m} into [${l}..${m}] and [${m + 1}..${r}]`
+      });
+
+      steps.push({
+        type: 'sort_left',
+        activeRange: [l, m],
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: writes,
+        arr: [...a],
+        activeLine: 3,
+        msg: `Recurse Left: Sorting subarray [${l}..${m}]`
+      });
+      mergeSortRec(l, m);
+
+      steps.push({
+        type: 'sort_right',
+        activeRange: [m + 1, r],
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: writes,
+        arr: [...a],
+        activeLine: 4,
+        msg: `Recurse Right: Sorting subarray [${m + 1}..${r}]`
+      });
+      mergeSortRec(m + 1, r);
+
+      mergeSubarrays(l, m, r);
+    }
+
+    function mergeSubarrays(l, m, r) {
+      steps.push({
+        type: 'merge_start',
+        activeRange: [l, r],
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: writes,
+        arr: [...a],
+        activeLine: 5,
+        msg: `Conquer & Merge: Merging sorted halves [${l}..${m}] and [${m + 1}..${r}]`
+      });
+
+      const temp = [];
+      let i = l;
+      let j = m + 1;
+
+      while (i <= m && j <= r) {
+        comparisons += 1;
+        steps.push({
+          type: 'compare',
+          activeRange: [l, r],
+          comparing: [i, j],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: writes,
+          arr: [...a],
+          activeLine: 5,
+          msg: `Comparing left element arr[${i}] (${a[i]}) with right element arr[${j}] (${a[j]})`
+        });
+
+        if (a[i] <= a[j]) {
+          temp.push(a[i]);
+          i++;
+        } else {
+          temp.push(a[j]);
+          j++;
+        }
+      }
+
+      while (i <= m) {
+        temp.push(a[i]);
+        i++;
+      }
+      while (j <= r) {
+        temp.push(a[j]);
+        j++;
+      }
+
+      for (let k = 0; k < temp.length; k++) {
+        a[l + k] = temp[k];
+        writes += 1;
+        steps.push({
+          type: 'write',
+          activeRange: [l, r],
+          comparing: [],
+          swapping: [l + k],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: writes,
+          arr: [...a],
+          activeLine: 5,
+          msg: `Writing merged element ${temp[k]} into arr[${l + k}]`
+        });
+      }
+
+      if (l === 0 && r === n - 1) {
+        for (let idx = 0; idx < n; idx++) {
+          if (!settled.includes(idx)) settled.push(idx);
+        }
+      }
+
+      steps.push({
+        type: 'merged_section',
+        activeRange: [l, r],
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: writes,
+        arr: [...a],
+        activeLine: 5,
+        msg: `Subarray [${l}..${r}] successfully merged: [${a.slice(l, r + 1).join(', ')}]`
       });
     }
-    settled.push(0);
+
+    mergeSortRec(0, n - 1);
+
     steps.push({
-      type: 'settled',
+      type: 'complete',
+      activeRange: [],
       comparing: [],
       swapping: [],
       sortedIndices: Array.from({ length: n }, (_, k) => k),
       comparisonsCount: comparisons,
-      swapsCount: swaps,
+      swapsCount: writes,
       arr: [...a],
       activeLine: 0,
-      msg: 'Merge Sort completed in O(n log n)!'
+      msg: 'Merge Sort complete! Whole array sorted in O(n log n).'
     });
 
     stepsRef.current = steps;
@@ -202,6 +298,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
       setActiveLine(0);
       setComparing([]);
       setSwapping([]);
+      setActiveRange([]);
       setSortedIndices([]);
       setComparisonsCount(0);
       setSwapsCount(0);
@@ -212,6 +309,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
       setIsPlaying(false);
       setComparing([]);
       setSwapping([]);
+      setActiveRange([]);
       setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
       setStepLog('Sorting complete! All elements placed in sorted order.');
       currentStepIndex.current = stepsRef.current.length;
@@ -225,6 +323,7 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
     setStepLog(step.msg);
     setComparing(step.comparing || []);
     setSwapping(step.swapping || []);
+    setActiveRange(step.activeRange || []);
     setSortedIndices(step.sortedIndices || []);
     setComparisonsCount(step.comparisonsCount || 0);
     setSwapsCount(step.swapsCount || 0);
@@ -377,14 +476,26 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
                 const isComparing = comparing.includes(idx);
                 const isSwapping = swapping.includes(idx);
                 const isSorted = sortedIndices.includes(idx);
+                const isInRange = activeRange.length === 2 && idx >= activeRange[0] && idx <= activeRange[1];
 
                 let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
-                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
-                if (isSwapping) barColor = 'bg-gradient-to-t from-indigo-600 to-indigo-400 scale-105 shadow-md shadow-indigo-500/30';
+                if (isInRange) barColor = 'bg-gradient-to-t from-indigo-500 to-sky-400 text-white ring-2 ring-indigo-300';
+                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30 text-slate-900';
+                if (isSwapping) barColor = 'bg-gradient-to-t from-purple-600 to-indigo-600 scale-105 shadow-md shadow-purple-500/30 text-white';
                 if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
 
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative">
+                    {isSwapping && (
+                      <span className="text-[9px] font-black uppercase text-purple-700 bg-purple-100 px-1 py-0.5 rounded border border-purple-200">
+                        WRITE
+                      </span>
+                    )}
+                    {isComparing && (
+                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200">
+                        COMP
+                      </span>
+                    )}
                     <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
                     <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
                     <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
@@ -395,8 +506,9 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Partition Compare</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-500" /><span>Merging</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-400 ring-1 ring-indigo-300" /><span>Active Subarray</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Comparing (L vs R)</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-600" /><span>Merged Write</span></div>
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
             </div>
 
