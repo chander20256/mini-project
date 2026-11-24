@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, GitFork, Info, Sparkles, X, ListOrdered
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, GitFork, Info, Sparkles, ChevronLeft, ChevronRight, X, ListOrdered
 } from 'lucide-react';
 import TreeCodeViewer from '../TreeCodeViewer';
 import TreeComplexityDeepDive from '../TreeComplexityDeepDive';
@@ -60,7 +60,7 @@ const inorderQuizQuestions = [
   }
 ];
 
-export default function InorderTraversal({ onBack }) {
+export default function InorderTraversal({ onBack, onNavigateAlgo }) {
   const [treeValues, setTreeValues] = useState([50, 25, 75, 12, 37, 62, 87]);
   const [root, setRoot] = useState(null);
   const [nodesList, setNodesList] = useState([]);
@@ -72,7 +72,7 @@ export default function InorderTraversal({ onBack }) {
   const [visitedNodes, setVisitedNodes] = useState([]);
   const [traversalOutput, setTraversalOutput] = useState([]);
   const [activeLine, setActiveLine] = useState(-1);
-  const [stepLog, setStepLog] = useState('Tree ready. Click "Start Inorder Traversal" to watch Left → Root → Right order.');
+  const [stepLog, setStepLog] = useState('Tree ready. Click "Start Inorder Traversal" or "Next" to watch Left → Root → Right order.');
   const [speed, setSpeed] = useState(500);
   const [stepTick, setStepTick] = useState(0);
 
@@ -147,6 +147,7 @@ export default function InorderTraversal({ onBack }) {
   const precomputeInorderSteps = (nodeRoot) => {
     const steps = [];
     const outputAcc = [];
+    const visitedAcc = [];
 
     const dfs = (node) => {
       if (!node) {
@@ -155,6 +156,7 @@ export default function InorderTraversal({ onBack }) {
           activeVal: null,
           activeLine: 1,
           outputSnapshot: [...outputAcc],
+          visitedSnapshot: [...visitedAcc],
           msg: 'Reached null leaf node. Returning up call stack.'
         });
         return;
@@ -166,17 +168,20 @@ export default function InorderTraversal({ onBack }) {
         activeVal: node.val,
         activeLine: 2,
         outputSnapshot: [...outputAcc],
+        visitedSnapshot: [...visitedAcc],
         msg: `Descending into LEFT child of node ${node.val}...`
       });
       dfs(node.left);
 
       // Step 2: Visit Root
       outputAcc.push(node.val);
+      visitedAcc.push(node.val);
       steps.push({
         type: 'visit_root',
         activeVal: node.val,
         activeLine: 3,
         visitedVal: node.val,
+        visitedSnapshot: [...visitedAcc],
         outputSnapshot: [...outputAcc],
         msg: `VISITED ROOT [${node.val}]! Appending ${node.val} to sorted traversal output.`
       });
@@ -187,6 +192,7 @@ export default function InorderTraversal({ onBack }) {
         activeVal: node.val,
         activeLine: 4,
         outputSnapshot: [...outputAcc],
+        visitedSnapshot: [...visitedAcc],
         msg: `Descending into RIGHT child of node ${node.val}...`
       });
       dfs(node.right);
@@ -199,6 +205,7 @@ export default function InorderTraversal({ onBack }) {
       activeVal: null,
       activeLine: 5,
       outputSnapshot: [...outputAcc],
+      visitedSnapshot: [...visitedAcc],
       msg: 'Inorder Traversal complete! Notice the output array is strictly sorted.'
     });
 
@@ -228,30 +235,50 @@ export default function InorderTraversal({ onBack }) {
     }
   };
 
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setActiveNodeVal(null);
+      setActiveLine(-1);
+      setVisitedNodes([]);
+      setTraversalOutput([]);
+      setStepLog('Ready to traverse. Click "Start Inorder" or "Next" to begin.');
+      setStepTick(t => t + 1);
+      return;
+    }
+    if (index >= stepsRef.current.length) {
+      setIsPlaying(false);
+      currentStepIndex.current = stepsRef.current.length;
+      setStepTick(t => t + 1);
+      return;
+    }
+
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
+    setActiveNodeVal(step.activeVal);
+    setActiveLine(step.activeLine);
+    setStepLog(step.msg);
+    setTraversalOutput(step.outputSnapshot || []);
+    setVisitedNodes(step.visitedSnapshot || []);
+    setStepTick(t => t + 1);
+  };
+
   const executeNextStep = () => {
     if (currentStepIndex.current >= stepsRef.current.length) {
       setIsPlaying(false);
       return false;
     }
-
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
-    setActiveNodeVal(step.activeVal);
-    setActiveLine(step.activeLine);
-    setStepLog(step.msg);
-    setTraversalOutput(step.outputSnapshot);
-
-    if (step.visitedVal) {
-      setVisitedNodes(prev => [...prev, step.visitedVal]);
-    }
-
-    if (step.type === 'complete') {
-      setIsPlaying(false);
-    }
-
-    setStepTick(t => t + 1);
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -323,8 +350,26 @@ export default function InorderTraversal({ onBack }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-200">
-            <GitFork className="w-3.5 h-3.5 text-teal-600" />
+          {onNavigateAlgo && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigateAlgo('bst_search')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev: BST Search</span>
+              </button>
+              <button
+                onClick={() => onNavigateAlgo('preorder')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <span>Next: Preorder</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1 bg-cyan-50 text-cyan-700 rounded-full border border-cyan-200">
+            <GitFork className="w-3.5 h-3.5 text-cyan-600" />
             <span>{treeValues.length} Nodes</span>
           </div>
           <button
@@ -506,11 +551,20 @@ export default function InorderTraversal({ onBack }) {
                     )}
                   </button>
                   <button
-                    onClick={executeNextStep}
-                    disabled={isPlaying}
-                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    onClick={executePrevStep}
+                    disabled={isPlaying || currentStepIndex.current <= 0}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Previous Step"
                   >
-                    <SkipForward className="w-4 h-4" /><span>Step</span>
+                    <SkipBack className="w-4 h-4" /><span>Prev</span>
+                  </button>
+                  <button
+                    onClick={executeNextStep}
+                    disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Next Step"
+                  >
+                    <SkipForward className="w-4 h-4" /><span>Next</span>
                   </button>
                   <button
                     onClick={() => handleResetPreset([50, 25, 75, 12, 37, 62, 87])}
