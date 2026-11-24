@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, GitFork, Info, Plus, Sparkles, X 
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, GitFork, Info, Plus, Sparkles, ChevronLeft, ChevronRight, X 
 } from 'lucide-react';
 import TreeCodeViewer from '../TreeCodeViewer';
 import TreeComplexityDeepDive from '../TreeComplexityDeepDive';
@@ -60,8 +60,9 @@ const bstQuizQuestions = [
   }
 ];
 
-export default function BstInsertion({ onBack }) {
+export default function BstInsertion({ onBack, onNavigateAlgo }) {
   const [treeValues, setTreeValues] = useState([50, 30, 70, 20, 40, 60, 80]);
+  const initialTreeValuesRef = useRef([50, 30, 70, 20, 40, 60, 80]);
   const [root, setRoot] = useState(null);
   const [nodesList, setNodesList] = useState([]);
   const [edgesList, setEdgesList] = useState([]);
@@ -72,7 +73,7 @@ export default function BstInsertion({ onBack }) {
   const [activeNodeVal, setActiveNodeVal] = useState(null);
   const [newNodeVal, setNewNodeVal] = useState(null);
   const [activeLine, setActiveLine] = useState(-1);
-  const [stepLog, setStepLog] = useState('Tree initialized. Click "Insert Node" or type a value to watch how BST finds its spot.');
+  const [stepLog, setStepLog] = useState('Tree initialized. Click "Start Insert" or "Next" to watch how BST finds its spot.');
   const [comparisonsCount, setComparisonsCount] = useState(0);
   const [speed, setSpeed] = useState(500);
   const [stepTick, setStepTick] = useState(0);
@@ -147,13 +148,17 @@ export default function BstInsertion({ onBack }) {
   }, []);
 
   const precomputeInsertSteps = (valToInsert) => {
+    initialTreeValuesRef.current = [...treeValues];
     const steps = [];
+    let comparisons = 0;
     if (!root) {
       steps.push({
         type: 'insert_root',
         activeVal: valToInsert,
         newVal: valToInsert,
         activeLine: 1,
+        comparisonsCount: 0,
+        treeValuesSnapshot: [valToInsert],
         msg: `Tree was empty! Inserted ${valToInsert} as the new Root Node.`
       });
       stepsRef.current = steps;
@@ -166,16 +171,21 @@ export default function BstInsertion({ onBack }) {
       activeVal: curr.val,
       newVal: null,
       activeLine: 0,
+      comparisonsCount: 0,
+      treeValuesSnapshot: [...treeValues],
       msg: `Starting insertion of value ${valToInsert} at Root Node (${curr.val}).`
     });
 
     while (curr) {
+      comparisons += 1;
       if (valToInsert < curr.val) {
         steps.push({
           type: 'compare_left',
           activeVal: curr.val,
           newVal: null,
           activeLine: 2,
+          comparisonsCount: comparisons,
+          treeValuesSnapshot: [...treeValues],
           msg: `${valToInsert} < ${curr.val} → Route to LEFT subtree.`
         });
         if (!curr.left) {
@@ -184,6 +194,8 @@ export default function BstInsertion({ onBack }) {
             activeVal: curr.val,
             newVal: valToInsert,
             activeLine: 1,
+            comparisonsCount: comparisons,
+            treeValuesSnapshot: [...treeValues, valToInsert],
             msg: `Found empty spot! Linked ${valToInsert} as left child of ${curr.val}.`
           });
           break;
@@ -195,6 +207,8 @@ export default function BstInsertion({ onBack }) {
           activeVal: curr.val,
           newVal: null,
           activeLine: 4,
+          comparisonsCount: comparisons,
+          treeValuesSnapshot: [...treeValues],
           msg: `${valToInsert} > ${curr.val} → Route to RIGHT subtree.`
         });
         if (!curr.right) {
@@ -203,6 +217,8 @@ export default function BstInsertion({ onBack }) {
             activeVal: curr.val,
             newVal: valToInsert,
             activeLine: 1,
+            comparisonsCount: comparisons,
+            treeValuesSnapshot: [...treeValues, valToInsert],
             msg: `Found empty spot! Linked ${valToInsert} as right child of ${curr.val}.`
           });
           break;
@@ -214,6 +230,8 @@ export default function BstInsertion({ onBack }) {
           activeVal: curr.val,
           newVal: null,
           activeLine: 0,
+          comparisonsCount: comparisons,
+          treeValuesSnapshot: [...treeValues],
           msg: `Value ${valToInsert} already exists in the BST! Duplicates ignored.`
         });
         break;
@@ -248,6 +266,45 @@ export default function BstInsertion({ onBack }) {
     }
   };
 
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setActiveNodeVal(null);
+      setNewNodeVal(null);
+      setActiveLine(-1);
+      setComparisonsCount(0);
+      setTreeValues([...initialTreeValuesRef.current]);
+      computeTreeLayout([...initialTreeValuesRef.current]);
+      setStepLog('Ready. Click "Start Insert" or "Next" to step through insertion.');
+      setStepTick(t => t + 1);
+      return;
+    }
+    if (index >= stepsRef.current.length) {
+      setIsPlaying(false);
+      setActiveNodeVal(null);
+      setNewNodeVal(null);
+      setActiveLine(-1);
+      currentStepIndex.current = stepsRef.current.length;
+      setStepTick(t => t + 1);
+      return;
+    }
+
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
+    setActiveNodeVal(step.activeVal);
+    setNewNodeVal(step.newVal);
+    setActiveLine(step.activeLine);
+    setStepLog(step.msg);
+    setComparisonsCount(step.comparisonsCount || 0);
+
+    if (step.treeValuesSnapshot) {
+      setTreeValues(step.treeValuesSnapshot);
+      computeTreeLayout(step.treeValuesSnapshot);
+    }
+
+    setStepTick(t => t + 1);
+  };
+
   const executeNextStep = () => {
     if (currentStepIndex.current >= stepsRef.current.length) {
       setIsPlaying(false);
@@ -256,27 +313,17 @@ export default function BstInsertion({ onBack }) {
       setActiveLine(-1);
       return false;
     }
-
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
-    setActiveNodeVal(step.activeVal);
-    setNewNodeVal(step.newVal);
-    setActiveLine(step.activeLine);
-    setStepLog(step.msg);
-
-    if (step.type.startsWith('compare')) {
-      setComparisonsCount(c => c + 1);
-    }
-
-    if (step.type === 'insert') {
-      const updated = [...treeValues, step.newVal];
-      setTreeValues(updated);
-      computeTreeLayout(updated);
-    }
-
-    setStepTick(t => t + 1);
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -347,6 +394,18 @@ export default function BstInsertion({ onBack }) {
             </h1>
           </div>
         </div>
+
+        {onNavigateAlgo && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigateAlgo('bst_search')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <span>Next: BST Search</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Workspace Layout */}
@@ -507,11 +566,20 @@ export default function BstInsertion({ onBack }) {
                     <span>Random</span>
                   </button>
                   <button
-                    onClick={executeNextStep}
-                    disabled={isPlaying}
-                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    onClick={executePrevStep}
+                    disabled={isPlaying || currentStepIndex.current <= 0}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Previous Step"
                   >
-                    <SkipForward className="w-4 h-4" /><span>Step</span>
+                    <SkipBack className="w-4 h-4" /><span>Prev</span>
+                  </button>
+                  <button
+                    onClick={executeNextStep}
+                    disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Next Step"
+                  >
+                    <SkipForward className="w-4 h-4" /><span>Next</span>
                   </button>
                   <button
                     onClick={() => handleResetPreset([50, 30, 70, 20, 40, 60, 80])}
