@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, X 
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, ChevronLeft, ChevronRight, X 
 } from 'lucide-react';
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
@@ -60,14 +60,15 @@ const insertionData = {
   ]
 };
 
-export default function InsertionSort({ onBack }) {
+export default function InsertionSort({ onBack, onNavigateAlgo }) {
   const [array, setArray] = useState([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
+  const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
-  const [stepLog, setStepLog] = useState('Ready. Click "Start Sort" to pick keys and shift them into sorted slots.');
+  const [stepLog, setStepLog] = useState('Ready. Click "Start Sort" or "Next" to pick keys and shift them.');
   const [comparisonsCount, setComparisonsCount] = useState(0);
   const [swapsCount, setSwapsCount] = useState(0);
   const [activeLine, setActiveLine] = useState(-1);
@@ -91,6 +92,7 @@ export default function InsertionSort({ onBack }) {
     for (let i = 0; i < size; i++) {
       newArr.push(Math.floor(Math.random() * 85) + 12);
     }
+    initialArrayRef.current = [...newArr];
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
@@ -109,6 +111,7 @@ export default function InsertionSort({ onBack }) {
   const loadCustomArray = (customArr) => {
     setIsPlaying(false);
     clearTimeout(timerRef.current);
+    initialArrayRef.current = [...customArr];
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
@@ -125,32 +128,51 @@ export default function InsertionSort({ onBack }) {
   };
 
   const precomputeSteps = (arr) => {
+    initialArrayRef.current = [...arr];
     const steps = [];
     const a = [...arr];
     const n = a.length;
+    let comparisons = 0;
+    let swaps = 0;
+    const settled = [0];
 
     for (let i = 1; i < n; i++) {
       let key = a[i];
       let j = i - 1;
+      comparisons += 1;
       steps.push({
         type: 'compare',
-        indices: [i],
+        comparing: [i],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: swaps,
         arr: [...a],
         activeLine: 1,
         msg: `Picking key = ${key} at index ${i}`
       });
       while (j >= 0 && a[j] > key) {
+        comparisons += 1;
         steps.push({
           type: 'compare',
-          indices: [j, j + 1],
+          comparing: [j, j + 1],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
           arr: [...a],
           activeLine: 3,
           msg: `Shift: ${a[j]} > ${key}, shifting ${a[j]} right`
         });
         a[j + 1] = a[j];
+        swaps += 1;
         steps.push({
           type: 'swap',
-          indices: [j, j + 1],
+          comparing: [],
+          swapping: [j, j + 1],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
           arr: [...a],
           activeLine: 4,
           msg: `Shifted ${a[j]} into index ${j + 1}`
@@ -158,25 +180,67 @@ export default function InsertionSort({ onBack }) {
         j--;
       }
       a[j + 1] = key;
+      settled.push(i);
       steps.push({
         type: 'settled',
-        index: j + 1,
+        comparing: [],
+        swapping: [],
+        sortedIndices: Array.from({ length: i + 1 }, (_, idx) => idx),
+        comparisonsCount: comparisons,
+        swapsCount: swaps,
         arr: [...a],
         activeLine: 6,
         msg: `Placed key ${key} into position ${j + 1}`
       });
     }
-    for (let k = 0; k < n; k++) {
-      steps.push({
-        type: 'settled',
-        index: k,
-        arr: [...a],
-        activeLine: 0,
-        msg: 'Insertion Sort completed!'
-      });
-    }
+    steps.push({
+      type: 'settled',
+      comparing: [],
+      swapping: [],
+      sortedIndices: Array.from({ length: n }, (_, k) => k),
+      comparisonsCount: comparisons,
+      swapsCount: swaps,
+      arr: [...a],
+      activeLine: 0,
+      msg: 'Insertion Sort completed!'
+    });
 
     stepsRef.current = steps;
+  };
+
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setArray([...initialArrayRef.current]);
+      setActiveLine(0);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices([]);
+      setComparisonsCount(0);
+      setSwapsCount(0);
+      setStepLog('Ready to start. Click "Start Sort" or "Next" to begin.');
+      return;
+    }
+    if (index >= stepsRef.current.length) {
+      setIsPlaying(false);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
+      setStepLog('Sorting complete! All elements placed in sorted order.');
+      currentStepIndex.current = stepsRef.current.length;
+      return;
+    }
+
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
+    setArray([...step.arr]);
+    setActiveLine(step.activeLine);
+    setStepLog(step.msg);
+    setComparing(step.comparing || []);
+    setSwapping(step.swapping || []);
+    setSortedIndices(step.sortedIndices || []);
+    setComparisonsCount(step.comparisonsCount || 0);
+    setSwapsCount(step.swapsCount || 0);
   };
 
   const executeNextStep = () => {
@@ -188,29 +252,17 @@ export default function InsertionSort({ onBack }) {
       setStepLog('Sorting complete! All elements placed in sorted order.');
       return false;
     }
-
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
-    setArray(step.arr);
-    setActiveLine(step.activeLine);
-    setStepLog(step.msg);
-
-    if (step.type === 'compare') {
-      setComparing(step.indices);
-      setSwapping([]);
-      setComparisonsCount(c => c + 1);
-    } else if (step.type === 'swap') {
-      setSwapping(step.indices);
-      setComparing([]);
-      setSwapsCount(s => s + 1);
-    } else if (step.type === 'settled') {
-      setSortedIndices(prev => Array.from(new Set([...prev, step.index])));
-      setComparing([]);
-      setSwapping([]);
-    }
-
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -280,6 +332,25 @@ export default function InsertionSort({ onBack }) {
             </h1>
           </div>
         </div>
+
+        {onNavigateAlgo && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigateAlgo('selection')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Prev: Selection</span>
+            </button>
+            <button
+              onClick={() => onNavigateAlgo('merge')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <span>Next: Merge</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Workspace Layout */}
@@ -346,16 +417,25 @@ export default function InsertionSort({ onBack }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handlePlayPause}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-amber-500/20 transition-all cursor-pointer"
                 >
                   {isPlaying ? <><Pause className="w-4 h-4 fill-current" /><span>Pause</span></> : <><Play className="w-4 h-4 fill-current" /><span>{currentStepIndex.current > 0 ? 'Resume' : 'Start Sort'}</span></>}
                 </button>
                 <button
-                  onClick={handleStepForward}
-                  disabled={isPlaying}
-                  className="flex items-center gap-1 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  onClick={executePrevStep}
+                  disabled={isPlaying || currentStepIndex.current <= 0}
+                  className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  title="Previous Step"
                 >
-                  <SkipForward className="w-4 h-4" /><span>Step</span>
+                  <SkipBack className="w-4 h-4" /><span>Prev</span>
+                </button>
+                <button
+                  onClick={handleStepForward}
+                  disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                  className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  title="Next Step"
+                >
+                  <SkipForward className="w-4 h-4" /><span>Next</span>
                 </button>
                 <button
                   onClick={() => generateNewArray(array.length)}
