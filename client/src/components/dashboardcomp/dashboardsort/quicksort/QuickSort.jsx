@@ -6,6 +6,7 @@ import {
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
 import ComplexityDeepDive from '../ComplexityDeepDive';
+import CodeExplanation from '../CodeExplanation';
 
 const quickData = {
   name: 'Quick Sort',
@@ -654,6 +655,9 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
 
       {/* Deep Explanation Section at the bottom */}
       <ComplexityDeepDive algoKey="quick" />
+
+      {/* Complete Code Explanation Section */}
+      <CodeExplanation algoKey="quick" />
     </main>
 
       {showQuiz && (
