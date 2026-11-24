@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, X 
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, ChevronLeft, ChevronRight, X 
 } from 'lucide-react';
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
@@ -58,14 +58,15 @@ const mergeData = {
   ]
 };
 
-export default function MergeSort({ onBack }) {
+export default function MergeSort({ onBack, onNavigateAlgo }) {
   const [array, setArray] = useState([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
+  const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
-  const [stepLog, setStepLog] = useState('Ready. Click "Start Sort" to watch recursive Divide & Conquer.');
+  const [stepLog, setStepLog] = useState('Ready. Click "Start Sort" or "Next" to watch recursive Divide & Conquer.');
   const [comparisonsCount, setComparisonsCount] = useState(0);
   const [swapsCount, setSwapsCount] = useState(0);
   const [activeLine, setActiveLine] = useState(-1);
@@ -89,6 +90,7 @@ export default function MergeSort({ onBack }) {
     for (let i = 0; i < size; i++) {
       newArr.push(Math.floor(Math.random() * 85) + 12);
     }
+    initialArrayRef.current = [...newArr];
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
@@ -107,6 +109,7 @@ export default function MergeSort({ onBack }) {
   const loadCustomArray = (customArr) => {
     setIsPlaying(false);
     clearTimeout(timerRef.current);
+    initialArrayRef.current = [...customArr];
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
@@ -123,15 +126,24 @@ export default function MergeSort({ onBack }) {
   };
 
   const precomputeSteps = (arr) => {
+    initialArrayRef.current = [...arr];
     const steps = [];
     const a = [...arr];
     const n = a.length;
+    let comparisons = 0;
+    let swaps = 0;
+    const settled = [];
 
     for (let i = 0; i < n - 1; i++) {
       for (let j = 0; j < n - i - 1; j++) {
+        comparisons += 1;
         steps.push({
           type: 'compare',
-          indices: [j, j + 1],
+          comparing: [j, j + 1],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
           arr: [...a],
           activeLine: 5,
           msg: `Merging sub-halves: comparing left [${j}] (${a[j]}) and right [${j + 1}] (${a[j + 1]})`
@@ -140,32 +152,82 @@ export default function MergeSort({ onBack }) {
           const temp = a[j];
           a[j] = a[j + 1];
           a[j + 1] = temp;
+          swaps += 1;
           steps.push({
             type: 'swap',
-            indices: [j, j + 1],
+            comparing: [],
+            swapping: [j, j + 1],
+            sortedIndices: [...settled],
+            comparisonsCount: comparisons,
+            swapsCount: swaps,
             arr: [...a],
             activeLine: 5,
             msg: `Merged sorted item ${a[j + 1]} into auxiliary place`
           });
         }
       }
+      settled.push(n - 1 - i);
       steps.push({
         type: 'settled',
-        index: n - 1 - i,
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: swaps,
         arr: [...a],
         activeLine: 0,
         msg: `Sub-array partition merged and placed up to index ${n - 1 - i}`
       });
     }
+    settled.push(0);
     steps.push({
       type: 'settled',
-      index: 0,
+      comparing: [],
+      swapping: [],
+      sortedIndices: Array.from({ length: n }, (_, k) => k),
+      comparisonsCount: comparisons,
+      swapsCount: swaps,
       arr: [...a],
       activeLine: 0,
       msg: 'Merge Sort completed in O(n log n)!'
     });
 
     stepsRef.current = steps;
+  };
+
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setArray([...initialArrayRef.current]);
+      setActiveLine(0);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices([]);
+      setComparisonsCount(0);
+      setSwapsCount(0);
+      setStepLog('Ready to start. Click "Start Sort" or "Next" to begin.');
+      return;
+    }
+    if (index >= stepsRef.current.length) {
+      setIsPlaying(false);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
+      setStepLog('Sorting complete! All elements placed in sorted order.');
+      currentStepIndex.current = stepsRef.current.length;
+      return;
+    }
+
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
+    setArray([...step.arr]);
+    setActiveLine(step.activeLine);
+    setStepLog(step.msg);
+    setComparing(step.comparing || []);
+    setSwapping(step.swapping || []);
+    setSortedIndices(step.sortedIndices || []);
+    setComparisonsCount(step.comparisonsCount || 0);
+    setSwapsCount(step.swapsCount || 0);
   };
 
   const executeNextStep = () => {
@@ -177,29 +239,17 @@ export default function MergeSort({ onBack }) {
       setStepLog('Sorting complete! All elements placed in sorted order.');
       return false;
     }
-
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
-    setArray(step.arr);
-    setActiveLine(step.activeLine);
-    setStepLog(step.msg);
-
-    if (step.type === 'compare') {
-      setComparing(step.indices);
-      setSwapping([]);
-      setComparisonsCount(c => c + 1);
-    } else if (step.type === 'swap') {
-      setSwapping(step.indices);
-      setComparing([]);
-      setSwapsCount(s => s + 1);
-    } else if (step.type === 'settled') {
-      setSortedIndices(prev => Array.from(new Set([...prev, step.index])));
-      setComparing([]);
-      setSwapping([]);
-    }
-
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -269,6 +319,25 @@ export default function MergeSort({ onBack }) {
             </h1>
           </div>
         </div>
+
+        {onNavigateAlgo && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigateAlgo('insertion')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Prev: Insertion</span>
+            </button>
+            <button
+              onClick={() => onNavigateAlgo('quick')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <span>Next: Quick</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Workspace Layout */}
@@ -335,16 +404,25 @@ export default function MergeSort({ onBack }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handlePlayPause}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
                 >
                   {isPlaying ? <><Pause className="w-4 h-4 fill-current" /><span>Pause</span></> : <><Play className="w-4 h-4 fill-current" /><span>{currentStepIndex.current > 0 ? 'Resume' : 'Start Sort'}</span></>}
                 </button>
                 <button
-                  onClick={handleStepForward}
-                  disabled={isPlaying}
-                  className="flex items-center gap-1 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  onClick={executePrevStep}
+                  disabled={isPlaying || currentStepIndex.current <= 0}
+                  className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  title="Previous Step"
                 >
-                  <SkipForward className="w-4 h-4" /><span>Step</span>
+                  <SkipBack className="w-4 h-4" /><span>Prev</span>
+                </button>
+                <button
+                  onClick={handleStepForward}
+                  disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                  className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  title="Next Step"
+                >
+                  <SkipForward className="w-4 h-4" /><span>Next</span>
                 </button>
                 <button
                   onClick={() => generateNewArray(array.length)}
