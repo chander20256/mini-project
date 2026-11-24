@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, ChevronRight, X 
+import {
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, XCircle, HelpCircle, BarChart3, Info, ChevronRight, ChevronLeft, X
 } from 'lucide-react';
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
@@ -58,14 +59,15 @@ const bubbleData = {
   ]
 };
 
-export default function BubbleSort({ onBack }) {
+export default function BubbleSort({ onBack, onNavigateAlgo }) {
   const [array, setArray] = useState([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
+  const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
-  const [stepLog, setStepLog] = useState('Ready to sort. Click "Start Sort" or "Step" to begin.');
+  const [stepLog, setStepLog] = useState('Ready to sort. Click "Start Sort" or "Next" to begin.');
   const [comparisonsCount, setComparisonsCount] = useState(0);
   const [swapsCount, setSwapsCount] = useState(0);
   const [activeLine, setActiveLine] = useState(-1);
@@ -89,6 +91,7 @@ export default function BubbleSort({ onBack }) {
     for (let i = 0; i < size; i++) {
       newArr.push(Math.floor(Math.random() * 85) + 12);
     }
+    initialArrayRef.current = [...newArr];
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
@@ -107,6 +110,7 @@ export default function BubbleSort({ onBack }) {
   const loadCustomArray = (customArr) => {
     setIsPlaying(false);
     clearTimeout(timerRef.current);
+    initialArrayRef.current = [...customArr];
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
@@ -123,15 +127,24 @@ export default function BubbleSort({ onBack }) {
   };
 
   const precomputeSteps = (arr) => {
+    initialArrayRef.current = [...arr];
     const steps = [];
     const a = [...arr];
     const n = a.length;
+    let comparisons = 0;
+    let swaps = 0;
+    const settled = [];
 
     for (let i = 0; i < n - 1; i++) {
       for (let j = 0; j < n - i - 1; j++) {
+        comparisons += 1;
         steps.push({
           type: 'compare',
-          indices: [j, j + 1],
+          comparing: [j, j + 1],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
           arr: [...a],
           activeLine: 2,
           msg: `Comparing arr[${j}] (${a[j]}) with arr[${j + 1}] (${a[j + 1]})`
@@ -141,32 +154,82 @@ export default function BubbleSort({ onBack }) {
           const temp = a[j];
           a[j] = a[j + 1];
           a[j + 1] = temp;
+          swaps += 1;
           steps.push({
             type: 'swap',
-            indices: [j, j + 1],
+            comparing: [],
+            swapping: [j, j + 1],
+            sortedIndices: [...settled],
+            comparisonsCount: comparisons,
+            swapsCount: swaps,
             arr: [...a],
             activeLine: 3,
             msg: `Swapped: ${a[j + 1]} > ${a[j]}`
           });
         }
       }
+      settled.push(n - 1 - i);
       steps.push({
         type: 'settled',
-        index: n - 1 - i,
+        comparing: [],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: swaps,
         arr: [...a],
         activeLine: 0,
         msg: `Element ${a[n - 1 - i]} is bubbled into its sorted position!`
       });
     }
+    settled.push(0);
     steps.push({
       type: 'settled',
-      index: 0,
+      comparing: [],
+      swapping: [],
+      sortedIndices: Array.from({ length: n }, (_, i) => i),
+      comparisonsCount: comparisons,
+      swapsCount: swaps,
       arr: [...a],
       activeLine: 0,
       msg: 'Bubble Sort completed! All elements sorted.'
     });
 
     stepsRef.current = steps;
+  };
+
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setArray([...initialArrayRef.current]);
+      setActiveLine(0);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices([]);
+      setComparisonsCount(0);
+      setSwapsCount(0);
+      setStepLog('Ready to start. Click "Start Sort" or "Next" to begin.');
+      return;
+    }
+    if (index >= stepsRef.current.length) {
+      setIsPlaying(false);
+      setComparing([]);
+      setSwapping([]);
+      setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
+      setStepLog('Sorting complete! All elements placed in sorted order.');
+      currentStepIndex.current = stepsRef.current.length;
+      return;
+    }
+
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
+    setArray([...step.arr]);
+    setActiveLine(step.activeLine);
+    setStepLog(step.msg);
+    setComparing(step.comparing || []);
+    setSwapping(step.swapping || []);
+    setSortedIndices(step.sortedIndices || []);
+    setComparisonsCount(step.comparisonsCount || 0);
+    setSwapsCount(step.swapsCount || 0);
   };
 
   const executeNextStep = () => {
@@ -178,29 +241,17 @@ export default function BubbleSort({ onBack }) {
       setStepLog('Sorting complete! All elements placed in sorted order.');
       return false;
     }
-
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
-
-    setArray(step.arr);
-    setActiveLine(step.activeLine);
-    setStepLog(step.msg);
-
-    if (step.type === 'compare') {
-      setComparing(step.indices);
-      setSwapping([]);
-      setComparisonsCount(c => c + 1);
-    } else if (step.type === 'swap') {
-      setSwapping(step.indices);
-      setComparing([]);
-      setSwapsCount(s => s + 1);
-    } else if (step.type === 'settled') {
-      setSortedIndices(prev => Array.from(new Set([...prev, step.index])));
-      setComparing([]);
-      setSwapping([]);
-    }
-
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -271,197 +322,218 @@ export default function BubbleSort({ onBack }) {
             </h1>
           </div>
         </div>
+
+        {onNavigateAlgo && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigateAlgo('selection')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <span>Next: Selection Sort</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Workspace Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Live Status, Simulation, Complexity */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
-          {/* 1. Live Execution Status Banner (ABOVE Simulation) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                <span>Live Status</span>
-              </span>
-              <div className="flex items-center gap-3 text-xs font-semibold">
-                <span className="text-slate-600">Comparisons: <strong className="text-blue-600">{comparisonsCount}</strong></span>
-                <span className="text-slate-300">&bull;</span>
-                <span className="text-slate-600">Swaps: <strong className="text-rose-600">{swapsCount}</strong></span>
+          {/* Left Column: Live Status, Simulation, Complexity */}
+          <div className="lg:col-span-7 flex flex-col gap-5">
+            {/* 1. Live Execution Status Banner (ABOVE Simulation) */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                  <span>Live Status</span>
+                </span>
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <span className="text-slate-600">Comparisons: <strong className="text-blue-600">{comparisonsCount}</strong></span>
+                  <span className="text-slate-300">&bull;</span>
+                  <span className="text-slate-600">Swaps: <strong className="text-rose-600">{swapsCount}</strong></span>
+                </div>
               </div>
-            </div>
-            <p className="text-xs sm:text-sm font-semibold text-slate-800 font-mono">
-              {stepLog}
-            </p>
-          </div>
-
-          {/* 2. Visual Block Simulation */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-bold text-slate-800">Array Blocks Simulation</span>
-              </div>
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                Bubble Sort
-              </span>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800 font-mono">
+                {stepLog}
+              </p>
             </div>
 
-            <div className="h-72 flex items-end justify-between gap-2.5 px-3 py-6 bg-slate-50/70 rounded-2xl border border-slate-200/70">
-              {array.map((val, idx) => {
-                const maxVal = Math.max(...array, 1);
-                const heightPercent = Math.max(14, Math.round((val / maxVal) * 88));
-                const isComparing = comparing.includes(idx);
-                const isSwapping = swapping.includes(idx);
-                const isSorted = sortedIndices.includes(idx);
+            {/* 2. Visual Block Simulation */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-bold text-slate-800">Array Blocks Simulation</span>
+                </div>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                  Bubble Sort
+                </span>
+              </div>
 
-                let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
-                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
-                if (isSwapping) barColor = 'bg-gradient-to-t from-rose-600 to-rose-400 scale-105 shadow-md shadow-rose-500/30';
-                if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
+              <div className="h-72 flex items-end justify-between gap-2.5 px-3 py-6 bg-slate-50/70 rounded-2xl border border-slate-200/70">
+                {array.map((val, idx) => {
+                  const maxVal = Math.max(...array, 1);
+                  const heightPercent = Math.max(14, Math.round((val / maxVal) * 88));
+                  const isComparing = comparing.includes(idx);
+                  const isSwapping = swapping.includes(idx);
+                  const isSorted = sortedIndices.includes(idx);
 
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                    <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
-                    <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
-                    <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
+                  let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
+                  if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
+                  if (isSwapping) barColor = 'bg-gradient-to-t from-rose-600 to-rose-400 scale-105 shadow-md shadow-rose-500/30';
+                  if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
+
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                      <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
+                      <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
+                      <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Comparing</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Swapping</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
+              </div>
+
+              <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePlayPause}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                  >
+                    {isPlaying ? <><Pause className="w-4 h-4 fill-current" /><span>Pause</span></> : <><Play className="w-4 h-4 fill-current" /><span>{currentStepIndex.current > 0 ? 'Resume' : 'Start Sort'}</span></>}
+                  </button>
+                  <button
+                    onClick={executePrevStep}
+                    disabled={isPlaying || currentStepIndex.current <= 0}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                    title="Previous Step"
+                  >
+                    <SkipBack className="w-4 h-4" /><span>Prev</span>
+                  </button>
+                  <button
+                    onClick={handleStepForward}
+                    disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                    title="Next Step"
+                  >
+                    <SkipForward className="w-4 h-4" /><span>Next</span>
+                  </button>
+                  <button
+                    onClick={() => generateNewArray(array.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4" /><span>Shuffle</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-slate-500">Speed:</span>
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-bold">
+                    <button onClick={() => setSpeed(700)} className={`px-2 py-1 rounded cursor-pointer ${speed === 700 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Slow</button>
+                    <button onClick={() => setSpeed(350)} className={`px-2 py-1 rounded cursor-pointer ${speed === 350 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Normal</button>
+                    <button onClick={() => setSpeed(120)} className={`px-2 py-1 rounded cursor-pointer ${speed === 120 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Fast</button>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Comparing</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Swapping</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
-            </div>
-
-            <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePlayPause}
-                  className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
-                >
-                  {isPlaying ? <><Pause className="w-4 h-4 fill-current" /><span>Pause</span></> : <><Play className="w-4 h-4 fill-current" /><span>{currentStepIndex.current > 0 ? 'Resume' : 'Start Sort'}</span></>}
-                </button>
-                <button
-                  onClick={handleStepForward}
-                  disabled={isPlaying}
-                  className="flex items-center gap-1 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
-                >
-                  <SkipForward className="w-4 h-4" /><span>Step</span>
-                </button>
-                <button
-                  onClick={() => generateNewArray(array.length)}
-                  className="flex items-center gap-1 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4" /><span>Shuffle</span>
-                </button>
+                </div>
               </div>
+            </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-slate-500">Speed:</span>
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-bold">
-                  <button onClick={() => setSpeed(700)} className={`px-2 py-1 rounded cursor-pointer ${speed === 700 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Slow</button>
-                  <button onClick={() => setSpeed(350)} className={`px-2 py-1 rounded cursor-pointer ${speed === 350 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Normal</button>
-                  <button onClick={() => setSpeed(120)} className={`px-2 py-1 rounded cursor-pointer ${speed === 120 ? 'bg-white shadow-xs text-blue-600' : 'text-slate-500'}`}>Fast</button>
+            {/* 3. Time & Space Complexity Card (BELOW Simulation) */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+              <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-1.5"><Info className="w-4 h-4 text-blue-600" /><span>Complexity Analysis &bull; Bubble Sort</span></span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block text-[11px] font-medium">Best Time</span>
+                  <span className="font-mono font-bold text-emerald-600 text-sm">{bubbleData.timeBest}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block text-[11px] font-medium">Average Time</span>
+                  <span className="font-mono font-bold text-blue-600 text-sm">{bubbleData.timeAvg}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block text-[11px] font-medium">Worst Time</span>
+                  <span className="font-mono font-bold text-rose-600 text-sm">{bubbleData.timeWorst}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-slate-500 block text-[11px] font-medium">Aux Space &amp; Stable</span>
+                  <span className="font-mono font-bold text-slate-800 text-sm">{bubbleData.space} &bull; {bubbleData.stable}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 3. Time & Space Complexity Card (BELOW Simulation) */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Info className="w-4 h-4 text-blue-600" /><span>Complexity Analysis &bull; Bubble Sort</span></span>
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[11px] font-medium">Best Time</span>
-                <span className="font-mono font-bold text-emerald-600 text-sm">{bubbleData.timeBest}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[11px] font-medium">Average Time</span>
-                <span className="font-mono font-bold text-blue-600 text-sm">{bubbleData.timeAvg}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[11px] font-medium">Worst Time</span>
-                <span className="font-mono font-bold text-rose-600 text-sm">{bubbleData.timeWorst}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[11px] font-medium">Aux Space &amp; Stable</span>
-                <span className="font-mono font-bold text-slate-800 text-sm">{bubbleData.space} &bull; {bubbleData.stable}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* Right Column: Custom Input, Code Tracing & Test Card */}
+          <div className="lg:col-span-5 flex flex-col gap-5">
+            <CustomArrayInput
+              onApplyArray={loadCustomArray}
+              algoName="Bubble Sort"
+            />
 
-        {/* Right Column: Custom Input, Code Tracing & Test Card */}
-        <div className="lg:col-span-5 flex flex-col gap-5">
-          <CustomArrayInput 
-            onApplyArray={loadCustomArray} 
-            algoName="Bubble Sort" 
-          />
+            <CodeViewer algoKey="bubble" activeLine={activeLine} />
 
-          <CodeViewer algoKey="bubble" activeLine={activeLine} />
-
-          {/* Interview Test Card (in empty space) */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-black shadow-xs">
-                  <Trophy className="w-5 h-5" />
+            {/* Interview Test Card (in empty space) */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-black shadow-xs">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-sm">
+                      Interview Placement Test
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      5 Top Asked MCQs &bull; +50 XP
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">
-                    Interview Placement Test
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    5 Top Asked MCQs &bull; +50 XP
-                  </p>
-                </div>
+
+                {quizScore !== null ? (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{quizScore}/5 Score</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                    Ready to Test
+                  </span>
+                )}
               </div>
 
-              {quizScore !== null ? (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{quizScore}/5 Score</span>
-                </span>
-              ) : (
-                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                  Ready to Test
-                </span>
-              )}
+              <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                Test your understanding of Bubble Sort logic, time complexity, stability, and placement questions.
+              </p>
+
+              <button
+                onClick={() => setShowQuiz(true)}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer group"
+              >
+                <Trophy className="w-4 h-4 text-slate-950 group-hover:scale-110 transition-transform" />
+                <span>{quizScore !== null ? 'Retake Interview Test' : 'Start Interview Test'}</span>
+              </button>
             </div>
-
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Test your understanding of Bubble Sort logic, time complexity, stability, and placement questions.
-            </p>
-
-            <button
-              onClick={() => setShowQuiz(true)}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer group"
-            >
-              <Trophy className="w-4 h-4 text-slate-950 group-hover:scale-110 transition-transform" />
-              <span>{quizScore !== null ? 'Retake Interview Test' : 'Start Interview Test'}</span>
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* Deep Explanation Section at the bottom */}
-      <ComplexityDeepDive algoKey="bubble" />
-    </main>
+        {/* Deep Explanation Section at the bottom */}
+        <ComplexityDeepDive algoKey="bubble" />
+      </main>
 
       {/* 5-Question Interview Boss Challenge Modal */}
       {showQuiz && (
-        <div 
+        <div
           onClick={() => setShowQuiz(false)}
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-8 my-8 relative"
           >
