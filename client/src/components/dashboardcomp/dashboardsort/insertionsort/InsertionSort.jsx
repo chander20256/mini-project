@@ -6,6 +6,7 @@ import {
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
 import ComplexityDeepDive from '../ComplexityDeepDive';
+import CodeExplanation from '../CodeExplanation';
 
 const insertionData = {
   name: 'Insertion Sort',
@@ -565,6 +566,9 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
 
       {/* Deep Explanation Section at the bottom */}
       <ComplexityDeepDive algoKey="insertion" />
+
+      {/* Complete Code Explanation Section */}
+      <CodeExplanation algoKey="insertion" />
     </main>
 
       {showQuiz && (
