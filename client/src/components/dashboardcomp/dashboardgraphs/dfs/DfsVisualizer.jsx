@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import GraphCodeViewer from '../GraphCodeViewer';
 import GraphComplexityDeepDive from '../GraphComplexityDeepDive';
+import GraphCodeExplanation from '../GraphCodeExplanation';
 
 // Graph presets
 const graphPresets = {
@@ -780,6 +781,9 @@ export default function DfsVisualizer({ onBack, onNavigateAlgo }) {
 
         {/* Deep Dive Guide */}
         <GraphComplexityDeepDive algoKey="dfs" />
+
+        {/* Complete Code Explanation Section */}
+        <GraphCodeExplanation algoKey="dfs" />
       </main>
 
       {/* Quiz Modal */}
