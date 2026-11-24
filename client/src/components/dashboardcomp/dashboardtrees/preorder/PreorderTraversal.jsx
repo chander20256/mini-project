@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import TreeCodeViewer from '../TreeCodeViewer';
 import TreeComplexityDeepDive from '../TreeComplexityDeepDive';
+import TreeCodeExplanation from '../TreeCodeExplanation';
 
 // Node helper class for BST
 class BSTNode {
@@ -701,6 +702,9 @@ export default function PreorderTraversal({ onBack, onNavigateAlgo }) {
 
         {/* Deep Dive Guide Component */}
         <TreeComplexityDeepDive algoKey="preorder" />
+
+        {/* Complete Code Explanation Section */}
+        <TreeCodeExplanation algoKey="preorder" />
       </main>
 
       {/* Quiz Modal */}
