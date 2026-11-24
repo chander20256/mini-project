@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Play, Pause, RotateCcw, SkipForward, 
-  Trophy, CheckCircle2, Network, Info, Sparkles, X, GitPullRequest
+  ArrowLeft, Play, Pause, RotateCcw, SkipForward, SkipBack,
+  Trophy, CheckCircle2, Network, Info, Sparkles, ChevronLeft, ChevronRight, X, GitPullRequest
 } from 'lucide-react';
 import GraphCodeViewer from '../GraphCodeViewer';
 import GraphComplexityDeepDive from '../GraphComplexityDeepDive';
@@ -97,7 +97,7 @@ const dfsQuizQuestions = [
   }
 ];
 
-export default function DfsVisualizer({ onBack }) {
+export default function DfsVisualizer({ onBack, onNavigateAlgo }) {
   const [presetKey, setPresetKey] = useState('default');
   const currentPreset = graphPresets[presetKey];
   const [startNode, setStartNode] = useState(0);
@@ -240,20 +240,34 @@ export default function DfsVisualizer({ onBack }) {
     }
   };
 
-  const executeNextStep = () => {
-    if (currentStepIndex.current >= stepsRef.current.length) {
+  const applyStep = (index) => {
+    if (index < 0) {
+      currentStepIndex.current = 0;
+      setActiveNode(null);
+      setActiveEdge(null);
+      setCallStack([]);
+      setVisitedSet([]);
+      setTraversalOrder([]);
+      setActiveLine(-1);
+      setStepLog('Graph ready. Select start node or click "Start DFS Traversal" or "Next".');
+      setStepTick(t => t + 1);
+      return;
+    }
+    if (index >= stepsRef.current.length) {
       setIsPlaying(false);
-      return false;
+      currentStepIndex.current = stepsRef.current.length;
+      setStepTick(t => t + 1);
+      return;
     }
 
-    const step = stepsRef.current[currentStepIndex.current];
-    currentStepIndex.current += 1;
+    const step = stepsRef.current[index];
+    currentStepIndex.current = index + 1;
 
     setActiveNode(step.activeNode);
     setActiveEdge(step.activeEdge);
-    setCallStack(step.stack);
-    setVisitedSet(step.visited);
-    setTraversalOrder(step.order);
+    setCallStack(step.stack || []);
+    setVisitedSet(step.visited || []);
+    setTraversalOrder(step.order || []);
     setActiveLine(step.activeLine);
     setStepLog(step.msg);
 
@@ -262,7 +276,24 @@ export default function DfsVisualizer({ onBack }) {
     }
 
     setStepTick(t => t + 1);
+  };
+
+  const executeNextStep = () => {
+    if (currentStepIndex.current >= stepsRef.current.length) {
+      setIsPlaying(false);
+      return false;
+    }
+    applyStep(currentStepIndex.current);
     return true;
+  };
+
+  const executePrevStep = () => {
+    setIsPlaying(false);
+    if (currentStepIndex.current <= 1) {
+      applyStep(-1);
+    } else {
+      applyStep(currentStepIndex.current - 2);
+    }
   };
 
   useEffect(() => {
@@ -341,6 +372,24 @@ export default function DfsVisualizer({ onBack }) {
         </div>
 
         <div className="flex items-center gap-3">
+          {onNavigateAlgo && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigateAlgo('bfs')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev: BFS</span>
+              </button>
+              <button
+                onClick={() => onNavigateAlgo('cycle_detection')}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors cursor-pointer"
+              >
+                <span>Next: Cycle Detection</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setShowQuiz(true)}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
@@ -571,11 +620,20 @@ export default function DfsVisualizer({ onBack }) {
                     )}
                   </button>
                   <button
-                    onClick={executeNextStep}
-                    disabled={isPlaying}
-                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    onClick={executePrevStep}
+                    disabled={isPlaying || currentStepIndex.current <= 0}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Previous Step"
                   >
-                    <SkipForward className="w-4 h-4" /><span>Step</span>
+                    <SkipBack className="w-4 h-4" /><span>Prev</span>
+                  </button>
+                  <button
+                    onClick={executeNextStep}
+                    disabled={isPlaying || (stepsRef.current.length > 0 && currentStepIndex.current >= stepsRef.current.length)}
+                    className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                    title="Next Step"
+                  >
+                    <SkipForward className="w-4 h-4" /><span>Next</span>
                   </button>
                   <button
                     onClick={handleReset}
