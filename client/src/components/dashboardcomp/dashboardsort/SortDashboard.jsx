@@ -99,19 +99,19 @@ export default function SortDashboard({
 
   // Route to the dedicated algorithm folder component
   if (selectedAlgo === 'bubble') {
-    return <BubbleSort onBack={() => setSelectedAlgo(null)} />;
+    return <BubbleSort onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'selection') {
-    return <SelectionSort onBack={() => setSelectedAlgo(null)} />;
+    return <SelectionSort onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'insertion') {
-    return <InsertionSort onBack={() => setSelectedAlgo(null)} />;
+    return <InsertionSort onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'merge') {
-    return <MergeSort onBack={() => setSelectedAlgo(null)} />;
+    return <MergeSort onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'quick') {
-    return <QuickSort onBack={() => setSelectedAlgo(null)} />;
+    return <QuickSort onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
 
   // Common Page: All Sorting Cards View
