@@ -63,6 +63,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
   const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
+  const [pivotIndex, setPivotIndex] = useState(null);
+  const [partitionRange, setPartitionRange] = useState([]);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
@@ -94,6 +96,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
+    setPivotIndex(null);
+    setPartitionRange([]);
     setSortedIndices([]);
     setStepLog('New array generated. Click "Start Sort" to begin.');
     setComparisonsCount(0);
@@ -113,6 +117,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
+    setPivotIndex(null);
+    setPartitionRange([]);
     setSortedIndices([]);
     setStepLog(`Custom array of ${customArr.length} elements loaded. Click "Start Sort" to run.`);
     setComparisonsCount(0);
@@ -134,54 +140,160 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
     let swaps = 0;
     const settled = [];
 
-    for (let i = 0; i < n - 1; i++) {
-      for (let j = 0; j < n - i - 1; j++) {
-        comparisons += 1;
+    function quickSortRec(low, high) {
+      if (low < high) {
         steps.push({
-          type: 'compare',
-          comparing: [j, j + 1],
+          type: 'partition_start',
+          pivot: high,
+          range: [low, high],
+          comparing: [],
           swapping: [],
           sortedIndices: [...settled],
           comparisonsCount: comparisons,
           swapsCount: swaps,
           arr: [...a],
           activeLine: 2,
-          msg: `Pivot partition: comparing arr[${j}] (${a[j]}) with pivot adjacent [${j + 1}] (${a[j + 1]})`
+          msg: `Partition: Choosing pivot arr[${high}] = ${a[high]} for range [${low}..${high}]`
         });
-        if (a[j] > a[j + 1]) {
-          const temp = a[j];
-          a[j] = a[j + 1];
-          a[j + 1] = temp;
-          swaps += 1;
-          steps.push({
-            type: 'swap',
-            comparing: [],
-            swapping: [j, j + 1],
-            sortedIndices: [...settled],
-            comparisonsCount: comparisons,
-            swapsCount: swaps,
-            arr: [...a],
-            activeLine: 3,
-            msg: `Partition swap: placed smaller element ${a[j]} left of pivot`
-          });
+
+        const pi = partition(low, high);
+        settled.push(pi);
+
+        steps.push({
+          type: 'pivot_locked',
+          pivot: pi,
+          range: [low, high],
+          comparing: [],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 2,
+          msg: `Pivot value ${a[pi]} permanently locked at index ${pi}`
+        });
+
+        steps.push({
+          type: 'recurse_left',
+          pivot: null,
+          range: [low, pi - 1],
+          comparing: [],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 3,
+          msg: `Recurse Left: Sorting partition [${low}..${pi - 1}]`
+        });
+        quickSortRec(low, pi - 1);
+
+        steps.push({
+          type: 'recurse_right',
+          pivot: null,
+          range: [pi + 1, high],
+          comparing: [],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 4,
+          msg: `Recurse Right: Sorting partition [${pi + 1}..${high}]`
+        });
+        quickSortRec(pi + 1, high);
+      } else if (low === high) {
+        if (!settled.includes(low)) settled.push(low);
+        steps.push({
+          type: 'single',
+          pivot: null,
+          range: [low, high],
+          comparing: [],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 1,
+          msg: `Element at index ${low} (${a[low]}) is a single item, locked in sorted place.`
+        });
+      }
+    }
+
+    function partition(low, high) {
+      const pivotVal = a[high];
+      let i = low - 1;
+
+      for (let j = low; j < high; j++) {
+        comparisons += 1;
+        steps.push({
+          type: 'compare',
+          pivot: high,
+          range: [low, high],
+          comparing: [j, high],
+          swapping: [],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 2,
+          msg: `Comparing arr[${j}] (${a[j]}) with pivot arr[${high}] (${pivotVal})`
+        });
+
+        if (a[j] < pivotVal) {
+          i++;
+          if (i !== j) {
+            const temp = a[i];
+            a[i] = a[j];
+            a[j] = temp;
+            swaps += 1;
+            steps.push({
+              type: 'swap',
+              pivot: high,
+              range: [low, high],
+              comparing: [],
+              swapping: [i, j],
+              sortedIndices: [...settled],
+              comparisonsCount: comparisons,
+              swapsCount: swaps,
+              arr: [...a],
+              activeLine: 2,
+              msg: `arr[${j}] < pivot: Swapped arr[${i}] and arr[${j}] into smaller partition`
+            });
+          }
         }
       }
-      settled.push(n - 1 - i);
-      steps.push({
-        type: 'settled',
-        comparing: [],
-        swapping: [],
-        sortedIndices: [...settled],
-        comparisonsCount: comparisons,
-        swapsCount: swaps,
-        arr: [...a],
-        activeLine: 4,
-        msg: `Pivot placed at index ${n - 1 - i}`
-      });
+
+      const pivotTarget = i + 1;
+      if (pivotTarget !== high) {
+        const temp = a[pivotTarget];
+        a[pivotTarget] = a[high];
+        a[high] = temp;
+        swaps += 1;
+        steps.push({
+          type: 'pivot_swap',
+          pivot: pivotTarget,
+          range: [low, high],
+          comparing: [],
+          swapping: [pivotTarget, high],
+          sortedIndices: [...settled],
+          comparisonsCount: comparisons,
+          swapsCount: swaps,
+          arr: [...a],
+          activeLine: 2,
+          msg: `Partition complete: Swapping pivot ${pivotVal} into its final sorted position at index ${pivotTarget}`
+        });
+      }
+
+      return pivotTarget;
     }
-    settled.push(0);
+
+    quickSortRec(0, n - 1);
+
     steps.push({
-      type: 'settled',
+      type: 'complete',
+      pivot: null,
+      range: [],
       comparing: [],
       swapping: [],
       sortedIndices: Array.from({ length: n }, (_, k) => k),
@@ -189,7 +301,7 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
       swapsCount: swaps,
       arr: [...a],
       activeLine: 0,
-      msg: 'Quick Sort completed!'
+      msg: 'Quick Sort completed! All partitions sorted in-place.'
     });
 
     stepsRef.current = steps;
@@ -202,6 +314,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
       setActiveLine(0);
       setComparing([]);
       setSwapping([]);
+      setPivotIndex(null);
+      setPartitionRange([]);
       setSortedIndices([]);
       setComparisonsCount(0);
       setSwapsCount(0);
@@ -212,6 +326,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
       setIsPlaying(false);
       setComparing([]);
       setSwapping([]);
+      setPivotIndex(null);
+      setPartitionRange([]);
       setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
       setStepLog('Sorting complete! All elements placed in sorted order.');
       currentStepIndex.current = stepsRef.current.length;
@@ -225,6 +341,8 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
     setStepLog(step.msg);
     setComparing(step.comparing || []);
     setSwapping(step.swapping || []);
+    setPivotIndex(step.pivot !== undefined ? step.pivot : null);
+    setPartitionRange(step.range || []);
     setSortedIndices(step.sortedIndices || []);
     setComparisonsCount(step.comparisonsCount || 0);
     setSwapsCount(step.swapsCount || 0);
@@ -367,17 +485,36 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
               {array.map((val, idx) => {
                 const maxVal = Math.max(...array, 1);
                 const heightPercent = Math.max(14, Math.round((val / maxVal) * 88));
+                const isPivot = pivotIndex === idx;
                 const isComparing = comparing.includes(idx);
                 const isSwapping = swapping.includes(idx);
                 const isSorted = sortedIndices.includes(idx);
+                const isInRange = partitionRange.length === 2 && idx >= partitionRange[0] && idx <= partitionRange[1];
 
                 let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
-                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
-                if (isSwapping) barColor = 'bg-gradient-to-t from-purple-600 to-purple-400 scale-105 shadow-md shadow-purple-500/30';
+                if (isInRange) barColor = 'bg-gradient-to-t from-blue-500 to-sky-400 text-white';
+                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30 text-slate-900';
+                if (isSwapping) barColor = 'bg-gradient-to-t from-fuchsia-600 to-pink-500 scale-105 shadow-md shadow-fuchsia-500/30 text-white';
+                if (isPivot) barColor = 'bg-gradient-to-t from-purple-700 to-purple-500 ring-2 ring-purple-400 scale-105 shadow-md shadow-purple-600/30 text-white';
                 if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
 
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative">
+                    {isPivot && (
+                      <span className="text-[9px] font-black uppercase text-purple-700 bg-purple-100 px-1 py-0.5 rounded border border-purple-200 shadow-xs">
+                        PIVOT
+                      </span>
+                    )}
+                    {isComparing && !isPivot && (
+                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 shadow-xs">
+                        SCAN
+                      </span>
+                    )}
+                    {isSwapping && !isPivot && (
+                      <span className="text-[9px] font-black uppercase text-fuchsia-700 bg-fuchsia-100 px-1 py-0.5 rounded border border-fuchsia-200 shadow-xs">
+                        SWAP
+                      </span>
+                    )}
                     <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
                     <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
                     <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
@@ -388,9 +525,10 @@ export default function QuickSort({ onBack, onNavigateAlgo }) {
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Pivot Compare</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-500" /><span>Partition Swap</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-600 ring-1 ring-purple-400" /><span>Active Pivot</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Scanning with Pivot</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-fuchsia-500" /><span>Partition Swap</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Locked in Place</span></div>
             </div>
 
             <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
