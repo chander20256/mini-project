@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Network, Award, ChevronRight, Layers, 
-  GitPullRequest, MapPin, Sparkles, AlertTriangle
+  GitPullRequest, MapPin, Sparkles
 } from 'lucide-react';
 import BfsVisualizer from './bfs/BfsVisualizer';
 import DfsVisualizer from './dfs/DfsVisualizer';
 import DijkstraVisualizer from './dijkstra/DijkstraVisualizer';
-import CycleDetection from './cycledetection/CycleDetection';
 
 const graphAlgorithmsList = [
   {
@@ -34,19 +33,6 @@ const graphAlgorithmsList = [
     property: 'Deep Backtracking & Exploration',
     description: 'Dives as deep as possible down each path using the system call stack before backtracking. Core engine for path finding and maze exploration.',
     icon: GitPullRequest
-  },
-  {
-    id: 'cycle_detection',
-    name: 'Cycle Detection (3-Color DFS)',
-    level: 'Intermediate',
-    badge: 'Back-Edge Theorem',
-    badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
-    timeList: 'O(V + E)',
-    timeMatrix: 'O(V²)',
-    space: 'O(V)',
-    property: 'Deadlock & Loop Trap',
-    description: 'Detects circular dependencies and closed loops using White/Gray/Black 3-color state machines. Crucial for OS deadlock detection and build tools.',
-    icon: AlertTriangle
   },
   {
     id: 'dijkstra',
@@ -82,9 +68,6 @@ export default function GraphDashboard({
   }
   if (selectedAlgo === 'dfs') {
     return <DfsVisualizer onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
-  }
-  if (selectedAlgo === 'cycle_detection') {
-    return <CycleDetection onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'dijkstra') {
     return <DijkstraVisualizer onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;

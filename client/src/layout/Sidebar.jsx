@@ -22,7 +22,6 @@ const treeAlgorithms = [
 const graphAlgorithms = [
   { id: 'bfs', name: 'Breadth-First Search (BFS)' },
   { id: 'dfs', name: 'Depth-First Search (DFS)' },
-  { id: 'cycle_detection', name: 'Cycle Detection (3-Color)' },
   { id: 'dijkstra', name: "Dijkstra's Algorithm" }
 ];
 

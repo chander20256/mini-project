@@ -382,10 +382,10 @@ export default function DfsVisualizer({ onBack, onNavigateAlgo }) {
                 <span>Prev: BFS</span>
               </button>
               <button
-                onClick={() => onNavigateAlgo('cycle_detection')}
+                onClick={() => onNavigateAlgo('dijkstra')}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors cursor-pointer"
               >
-                <span>Next: Cycle Detection</span>
+                <span>Next: Dijkstra</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

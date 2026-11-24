@@ -50,8 +50,7 @@ const arenas = [
     algorithms: [
       { name: 'Breadth-First Search (BFS)', time: 'O(V+E)' },
       { name: 'Depth-First Search (DFS)', time: 'O(V+E)' },
-      { name: "Dijkstra's Shortest Path", time: 'O(E log V)' },
-      { name: 'Cycle Detection', time: 'O(V+E)' }
+      { name: "Dijkstra's Shortest Path", time: 'O(E log V)' }
     ]
   }
 ];

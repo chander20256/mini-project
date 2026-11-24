@@ -150,58 +150,6 @@ Q3: Does Dijkstra work on disconnected graphs?
 Ans: Yes, vertices unreachable from the source simply retain their distance value of Infinity (∞).`
       }
     ]
-  },
-  cycle_detection: {
-    title: 'Cycle Detection: Deep Dive & The Back-Edge Theorem',
-    subtitle: 'Detect closed loops in networks: 3-Color DFS state machines vs Union-Find / Kahn’s algorithm.',
-    analogy: {
-      headline: 'The One-Way Traffic Roundabout Deadlock Analogy',
-      story: `Imagine driving through a city of one-way streets:
-1. You drive into a roundabout (Node A → Node B → Node C).
-2. Suddenly, Node C’s only exit sign points straight back to Node A!
-3. Because you are already inside the active path that brought you here, you are trapped in an infinite loop!
-
-In graph theory, when a node points back to an active ancestor that is still waiting on the call stack, that edge is called a BACK-EDGE. A Back-Edge is proof positive that a cycle exists!`
-    },
-    sections: [
-      {
-        id: 'cycle-three-colors',
-        badge: 'Core Concept • 3-Color DFS',
-        badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
-        title: "Why A Simple 'Visited' Boolean Fails in Directed Graphs",
-        content: `• In undirected graphs, checking if a neighbor is visited (and not our parent) is enough.
-• BUT in DIRECTED graphs, consider: 1 → 2 and 1 → 3 → 2.
-• When reaching 2 from 3, 2 is already visited, but this is a Diamond DAG (Cross-Edge), NOT a cycle!
-• Therefore, we MUST use 3 states:
-  - State 0 (White): Unvisited.
-  - State 1 (Gray / Amber): Currently in the active recursion call stack (Ancestor).
-  - State 2 (Black / Emerald): Completely finished; all descendant paths explored.
-• Only encountering a State 1 node indicates a genuine Back-Edge and cycle!`
-      },
-      {
-        id: 'cycle-complexity',
-        badge: 'Time • O(V + E) | Space • O(V)',
-        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-        title: 'Complexity & Scalability Analysis',
-        content: `• Time Complexity: O(V + E) because each vertex transitions 0 → 1 → 2 exactly once, and each edge is examined once.
-• Space Complexity: O(V) to store the 3-state array and the recursion call stack.
-• Alternative: Kahn's Algorithm (BFS using in-degrees). If the total number of nodes emitted in the topological order is less than V, a cycle exists!`
-      },
-      {
-        id: 'cycle-interview-traps',
-        badge: 'Top Placement Traps',
-        badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
-        title: 'Top 3 Viva & Interview Questions on Cycle Detection',
-        content: `Q1: Can Union-Find (Disjoint Set Union) detect cycles in DIRECTED graphs?
-Ans: NO! Standard DSU only works for UNDIRECTED graphs because it does not encode directionality. For directed graphs, use 3-Color DFS or Kahn's algorithm.
-
-Q2: What is a classic real-world application of Cycle Detection?
-Ans: Operating System Deadlock Detection (Resource Allocation Graphs), Build Tool dependency resolution (detecting circular imports in Webpack/npm), and Course Schedule prerequisites (LeetCode #207).
-
-Q3: What is the relationship between DAGs and Topological Sorting?
-Ans: A graph has a valid Topological Sort IF AND ONLY IF it has NO CYCLES (i.e., it is a Directed Acyclic Graph).`
-      }
-    ]
   }
 };
 

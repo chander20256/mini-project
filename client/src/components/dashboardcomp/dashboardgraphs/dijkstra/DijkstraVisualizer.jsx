@@ -391,11 +391,11 @@ export default function DijkstraVisualizer({ onBack, onNavigateAlgo }) {
           {onNavigateAlgo && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onNavigateAlgo('cycle_detection')}
+                onClick={() => onNavigateAlgo('dfs')}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev: Cycle Detection</span>
+                <span>Prev: DFS</span>
               </button>
             </div>
           )}

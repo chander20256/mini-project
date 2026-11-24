@@ -58,9 +58,9 @@ export default function DashboardGlobal({ onSelectArena }) {
       btnColor: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20',
       icon: Network,
       description: 'Traverse complex graph networks. Trace Breadth-First Search (queue) and Depth-First Search (stack) discoveries.',
-      totalAlgos: 4,
+      totalAlgos: 3,
       completedCount: 0,
-      algorithms: ['BFS (Queue)', 'DFS (Stack)', "Dijkstra's Algorithm", 'Cycle Detection']
+      algorithms: ['BFS (Queue)', 'DFS (Stack)', "Dijkstra's Algorithm"]
     }
   ];
 
