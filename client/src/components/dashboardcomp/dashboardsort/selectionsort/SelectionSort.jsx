@@ -6,6 +6,7 @@ import {
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
 import ComplexityDeepDive from '../ComplexityDeepDive';
+import CodeExplanation from '../CodeExplanation';
 
 const selectionData = {
   name: 'Selection Sort',
@@ -587,6 +588,9 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
 
       {/* Deep Explanation Section at the bottom */}
       <ComplexityDeepDive algoKey="selection" />
+
+      {/* Complete Code Explanation Section */}
+      <CodeExplanation algoKey="selection" />
     </main>
 
       {/* Quiz Modal */}
