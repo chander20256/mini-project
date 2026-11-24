@@ -86,16 +86,16 @@ export default function TreeDashboard({
 
   // Route to the dedicated algorithm folder component
   if (selectedAlgo === 'bst_insert') {
-    return <BstInsertion onBack={() => setSelectedAlgo(null)} />;
+    return <BstInsertion onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'bst_search') {
-    return <BstSearch onBack={() => setSelectedAlgo(null)} />;
+    return <BstSearch onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'inorder') {
-    return <InorderTraversal onBack={() => setSelectedAlgo(null)} />;
+    return <InorderTraversal onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
   if (selectedAlgo === 'preorder') {
-    return <PreorderTraversal onBack={() => setSelectedAlgo(null)} />;
+    return <PreorderTraversal onBack={() => setSelectedAlgo(null)} onNavigateAlgo={setSelectedAlgo} />;
   }
 
   // Common Page: All Tree Cards View
