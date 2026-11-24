@@ -7,6 +7,7 @@ import {
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
 import ComplexityDeepDive from '../ComplexityDeepDive';
+import CodeExplanation from '../CodeExplanation';
 
 const bubbleData = {
   name: 'Bubble Sort',
@@ -525,6 +526,9 @@ export default function BubbleSort({ onBack, onNavigateAlgo }) {
 
         {/* Deep Explanation Section at the bottom */}
         <ComplexityDeepDive algoKey="bubble" />
+
+        {/* Complete Code Explanation Section */}
+        <CodeExplanation algoKey="bubble" />
       </main>
 
       {/* 5-Question Interview Boss Challenge Modal */}
