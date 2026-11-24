@@ -63,6 +63,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
   const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
+  const [minCandidate, setMinCandidate] = useState(null);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
@@ -94,6 +95,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
+    setMinCandidate(null);
     setSortedIndices([]);
     setStepLog('New array generated. Click "Start Sort" to begin.');
     setComparisonsCount(0);
@@ -113,6 +115,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
+    setMinCandidate(null);
     setSortedIndices([]);
     setStepLog(`Custom array of ${customArr.length} elements loaded. Click "Start Sort" to run.`);
     setComparisonsCount(0);
@@ -136,31 +139,46 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
 
     for (let i = 0; i < n - 1; i++) {
       let minIdx = i;
+      steps.push({
+        type: 'init_min',
+        minCandidate: minIdx,
+        comparing: [i],
+        swapping: [],
+        sortedIndices: [...settled],
+        comparisonsCount: comparisons,
+        swapsCount: swaps,
+        arr: [...a],
+        activeLine: 1,
+        msg: `Pass ${i + 1}: Initialized minimum candidate arr[${i}] = ${a[i]}`
+      });
+
       for (let j = i + 1; j < n; j++) {
         comparisons += 1;
         steps.push({
           type: 'compare',
-          comparing: [j, minIdx],
+          minCandidate: minIdx,
+          comparing: [j],
           swapping: [],
           sortedIndices: [...settled],
           comparisonsCount: comparisons,
           swapsCount: swaps,
           arr: [...a],
           activeLine: 3,
-          msg: `Scanning arr[${j}] (${a[j]}) vs min arr[${minIdx}] (${a[minIdx]})`
+          msg: `Scanning: Checking if arr[${j}] (${a[j]}) < minimum candidate arr[${minIdx}] (${a[minIdx]})`
         });
         if (a[j] < a[minIdx]) {
           minIdx = j;
           steps.push({
             type: 'min_found',
-            comparing: [minIdx],
+            minCandidate: minIdx,
+            comparing: [],
             swapping: [],
             sortedIndices: [...settled],
             comparisonsCount: comparisons,
             swapsCount: swaps,
             arr: [...a],
             activeLine: 3,
-            msg: `New minimum at index ${minIdx} (${a[minIdx]})`
+            msg: `New minimum candidate discovered at index ${minIdx} (${a[minIdx]})`
           });
         }
       }
@@ -171,6 +189,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
         swaps += 1;
         steps.push({
           type: 'swap',
+          minCandidate: null,
           comparing: [],
           swapping: [i, minIdx],
           sortedIndices: [...settled],
@@ -178,12 +197,13 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
           swapsCount: swaps,
           arr: [...a],
           activeLine: 5,
-          msg: `Swapped minimum ${a[i]} into position ${i}`
+          msg: `Swapped minimum element ${a[i]} into its final position at index ${i}`
         });
       }
       settled.push(i);
       steps.push({
         type: 'settled',
+        minCandidate: null,
         comparing: [],
         swapping: [],
         sortedIndices: [...settled],
@@ -191,12 +211,13 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
         swapsCount: swaps,
         arr: [...a],
         activeLine: 0,
-        msg: `Index ${i} (${a[i]}) is placed in sorted region.`
+        msg: `Index ${i} (${a[i]}) is locked in sorted position.`
       });
     }
     settled.push(n - 1);
     steps.push({
       type: 'settled',
+      minCandidate: null,
       comparing: [],
       swapping: [],
       sortedIndices: Array.from({ length: n }, (_, i) => i),
@@ -204,7 +225,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
       swapsCount: swaps,
       arr: [...a],
       activeLine: 0,
-      msg: 'Selection Sort completed!'
+      msg: 'Selection Sort completed! All minimums locked in place.'
     });
 
     stepsRef.current = steps;
@@ -217,6 +238,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
       setActiveLine(0);
       setComparing([]);
       setSwapping([]);
+      setMinCandidate(null);
       setSortedIndices([]);
       setComparisonsCount(0);
       setSwapsCount(0);
@@ -227,6 +249,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
       setIsPlaying(false);
       setComparing([]);
       setSwapping([]);
+      setMinCandidate(null);
       setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
       setStepLog('Sorting complete! All elements placed in sorted order.');
       currentStepIndex.current = stepsRef.current.length;
@@ -240,6 +263,7 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
     setStepLog(step.msg);
     setComparing(step.comparing || []);
     setSwapping(step.swapping || []);
+    setMinCandidate(step.minCandidate !== undefined ? step.minCandidate : null);
     setSortedIndices(step.sortedIndices || []);
     setComparisonsCount(step.comparisonsCount || 0);
     setSwapsCount(step.swapsCount || 0);
@@ -395,17 +419,34 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
               {array.map((val, idx) => {
                 const maxVal = Math.max(...array, 1);
                 const heightPercent = Math.max(14, Math.round((val / maxVal) * 88));
+                const isMin = idx === minCandidate;
                 const isComparing = comparing.includes(idx);
                 const isSwapping = swapping.includes(idx);
                 const isSorted = sortedIndices.includes(idx);
 
                 let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
-                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
-                if (isSwapping) barColor = 'bg-gradient-to-t from-rose-600 to-rose-400 scale-105 shadow-md shadow-rose-500/30';
+                if (isComparing && !isMin) barColor = 'bg-gradient-to-t from-sky-500 to-blue-400 ring-2 ring-sky-400 scale-105 text-white';
+                if (isMin) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30 text-slate-900';
+                if (isSwapping) barColor = 'bg-gradient-to-t from-rose-600 to-rose-400 scale-105 shadow-md shadow-rose-500/30 text-white';
                 if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
 
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative">
+                    {isMin && (
+                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 shadow-xs">
+                        MIN
+                      </span>
+                    )}
+                    {isComparing && !isMin && (
+                      <span className="text-[9px] font-black uppercase text-sky-700 bg-sky-100 px-1 py-0.5 rounded border border-sky-200 shadow-xs">
+                        SCAN
+                      </span>
+                    )}
+                    {isSwapping && (
+                      <span className="text-[9px] font-black uppercase text-rose-700 bg-rose-100 px-1 py-0.5 rounded border border-rose-200 shadow-xs">
+                        SWAP
+                      </span>
+                    )}
                     <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
                     <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
                     <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
@@ -416,8 +457,9 @@ export default function SelectionSort({ onBack, onNavigateAlgo }) {
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Scanning Min</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Swapping</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400 ring-1 ring-amber-300" /><span>Min Candidate</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-400" /><span>Scanning Rest</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Swap to Position</span></div>
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
             </div>
 
