@@ -6,6 +6,7 @@ import {
 import CustomArrayInput from '../CustomArrayInput';
 import CodeViewer from '../CodeViewer';
 import ComplexityDeepDive from '../ComplexityDeepDive';
+import CodeExplanation from '../CodeExplanation';
 
 const mergeData = {
   name: 'Merge Sort',
@@ -635,6 +636,9 @@ export default function MergeSort({ onBack, onNavigateAlgo }) {
 
       {/* Deep Explanation Section at the bottom */}
       <ComplexityDeepDive algoKey="merge" />
+
+      {/* Complete Code Explanation Section */}
+      <CodeExplanation algoKey="merge" />
     </main>
 
       {showQuiz && (
