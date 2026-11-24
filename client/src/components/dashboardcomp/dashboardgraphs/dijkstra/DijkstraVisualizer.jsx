@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import GraphCodeViewer from '../GraphCodeViewer';
 import GraphComplexityDeepDive from '../GraphComplexityDeepDive';
+import GraphCodeExplanation from '../GraphCodeExplanation';
 
 // Weighted graph presets
 const weightedPresets = {
@@ -809,6 +810,9 @@ export default function DijkstraVisualizer({ onBack, onNavigateAlgo }) {
 
         {/* Deep Dive Guide */}
         <GraphComplexityDeepDive algoKey="dijkstra" />
+
+        {/* Complete Code Explanation Section */}
+        <GraphCodeExplanation algoKey="dijkstra" />
       </main>
 
       {/* Quiz Modal */}
