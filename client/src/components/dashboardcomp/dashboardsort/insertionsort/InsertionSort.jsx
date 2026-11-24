@@ -65,6 +65,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
   const initialArrayRef = useRef([45, 82, 19, 95, 54, 28, 70, 36, 61, 12]);
   const [comparing, setComparing] = useState([]);
   const [swapping, setSwapping] = useState([]);
+  const [keyIndex, setKeyIndex] = useState(null);
   const [sortedIndices, setSortedIndices] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(400);
@@ -96,6 +97,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
     setArray(newArr);
     setComparing([]);
     setSwapping([]);
+    setKeyIndex(null);
     setSortedIndices([]);
     setStepLog('New array generated. Click "Start Sort" to begin.');
     setComparisonsCount(0);
@@ -115,6 +117,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
     setArray(customArr);
     setComparing([]);
     setSwapping([]);
+    setKeyIndex(null);
     setSortedIndices([]);
     setStepLog(`Custom array of ${customArr.length} elements loaded. Click "Start Sort" to run.`);
     setComparisonsCount(0);
@@ -141,7 +144,8 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
       let j = i - 1;
       comparisons += 1;
       steps.push({
-        type: 'compare',
+        type: 'pick_key',
+        keyIndex: i,
         comparing: [i],
         swapping: [],
         sortedIndices: [...settled],
@@ -149,12 +153,14 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
         swapsCount: swaps,
         arr: [...a],
         activeLine: 1,
-        msg: `Picking key = ${key} at index ${i}`
+        msg: `Picking key = ${key} at index ${i} to insert into sorted prefix [0..${i - 1}]`
       });
+
       while (j >= 0 && a[j] > key) {
         comparisons += 1;
         steps.push({
           type: 'compare',
+          keyIndex: j + 1,
           comparing: [j, j + 1],
           swapping: [],
           sortedIndices: [...settled],
@@ -162,12 +168,13 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
           swapsCount: swaps,
           arr: [...a],
           activeLine: 3,
-          msg: `Shift: ${a[j]} > ${key}, shifting ${a[j]} right`
+          msg: `Compare: arr[${j}] (${a[j]}) > key (${key}), shifting ${a[j]} right`
         });
         a[j + 1] = a[j];
         swaps += 1;
         steps.push({
-          type: 'swap',
+          type: 'shift',
+          keyIndex: j,
           comparing: [],
           swapping: [j, j + 1],
           sortedIndices: [...settled],
@@ -175,26 +182,28 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
           swapsCount: swaps,
           arr: [...a],
           activeLine: 4,
-          msg: `Shifted ${a[j]} into index ${j + 1}`
+          msg: `Shifted arr[${j}] (${a[j + 1]}) right into index ${j + 1}`
         });
         j--;
       }
       a[j + 1] = key;
       settled.push(i);
       steps.push({
-        type: 'settled',
+        type: 'insert',
+        keyIndex: j + 1,
         comparing: [],
-        swapping: [],
+        swapping: [j + 1],
         sortedIndices: Array.from({ length: i + 1 }, (_, idx) => idx),
         comparisonsCount: comparisons,
         swapsCount: swaps,
         arr: [...a],
         activeLine: 6,
-        msg: `Placed key ${key} into position ${j + 1}`
+        msg: `Inserted key ${key} into sorted position ${j + 1}`
       });
     }
     steps.push({
       type: 'settled',
+      keyIndex: null,
       comparing: [],
       swapping: [],
       sortedIndices: Array.from({ length: n }, (_, k) => k),
@@ -202,7 +211,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
       swapsCount: swaps,
       arr: [...a],
       activeLine: 0,
-      msg: 'Insertion Sort completed!'
+      msg: 'Insertion Sort completed! Entire array is sorted.'
     });
 
     stepsRef.current = steps;
@@ -215,6 +224,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
       setActiveLine(0);
       setComparing([]);
       setSwapping([]);
+      setKeyIndex(null);
       setSortedIndices([]);
       setComparisonsCount(0);
       setSwapsCount(0);
@@ -225,6 +235,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
       setIsPlaying(false);
       setComparing([]);
       setSwapping([]);
+      setKeyIndex(null);
       setSortedIndices(Array.from({ length: array.length }, (_, i) => i));
       setStepLog('Sorting complete! All elements placed in sorted order.');
       currentStepIndex.current = stepsRef.current.length;
@@ -238,6 +249,7 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
     setStepLog(step.msg);
     setComparing(step.comparing || []);
     setSwapping(step.swapping || []);
+    setKeyIndex(step.keyIndex !== undefined ? step.keyIndex : null);
     setSortedIndices(step.sortedIndices || []);
     setComparisonsCount(step.comparisonsCount || 0);
     setSwapsCount(step.swapsCount || 0);
@@ -387,17 +399,34 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
               {array.map((val, idx) => {
                 const maxVal = Math.max(...array, 1);
                 const heightPercent = Math.max(14, Math.round((val / maxVal) * 88));
+                const isKey = idx === keyIndex;
                 const isComparing = comparing.includes(idx);
                 const isSwapping = swapping.includes(idx);
                 const isSorted = sortedIndices.includes(idx);
 
                 let barColor = 'bg-gradient-to-t from-blue-600 to-indigo-500 text-white';
-                if (isComparing) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30';
-                if (isSwapping) barColor = 'bg-gradient-to-t from-rose-600 to-rose-400 scale-105 shadow-md shadow-rose-500/30';
-                if (isSorted) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
+                if (isSwapping && !isKey) barColor = 'bg-gradient-to-t from-sky-500 to-blue-600 ring-2 ring-sky-300 scale-105 shadow-md shadow-blue-400/30 text-white';
+                if (isComparing && !isKey) barColor = 'bg-gradient-to-t from-amber-400 to-amber-200 ring-2 ring-amber-300 scale-105 text-slate-900';
+                if (isKey) barColor = 'bg-gradient-to-t from-amber-500 to-amber-300 ring-2 ring-amber-400 scale-105 shadow-md shadow-amber-400/30 text-slate-900';
+                if (isSorted && !isKey && !isSwapping) barColor = 'bg-gradient-to-t from-emerald-600 to-teal-500 text-white';
 
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative">
+                    {isKey && (
+                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 shadow-xs">
+                        KEY
+                      </span>
+                    )}
+                    {isSwapping && !isKey && (
+                      <span className="text-[9px] font-black uppercase text-blue-700 bg-blue-100 px-1 py-0.5 rounded border border-blue-200 shadow-xs">
+                        SHIFT
+                      </span>
+                    )}
+                    {isComparing && !isKey && !isSwapping && (
+                      <span className="text-[9px] font-black uppercase text-slate-700 bg-slate-200 px-1 py-0.5 rounded border border-slate-300 shadow-xs">
+                        COMP
+                      </span>
+                    )}
                     <span className="text-[11px] font-mono font-bold text-slate-600">{val}</span>
                     <div style={{ height: `${heightPercent}%` }} className={`w-full rounded-t-xl transition-all duration-200 ${barColor}`} />
                     <span className="text-[10px] font-mono text-slate-400">[{idx}]</span>
@@ -408,9 +437,9 @@ export default function InsertionSort({ onBack, onNavigateAlgo }) {
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Unsorted</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Key / Comparing</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Shifting</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400 ring-1 ring-amber-300" /><span>Active Key</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500" /><span>Shift Right</span></div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Sorted Prefix</span></div>
             </div>
 
             <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
